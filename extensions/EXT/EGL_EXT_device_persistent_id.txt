@@ -1,0 +1,138 @@
+Name
+
+    EXT_device_persistent_id
+
+Name Strings
+
+    EGL_EXT_device_persistent_id
+
+Contributors
+
+    Kyle Brenneman,  NVIDIA  (kbrenneman 'at' nvidia.com)
+
+Contact
+
+    Kyle Brenneman,  NVIDIA  (kbrenneman 'at' nvidia.com)
+
+Version
+
+    Version 1 - January 25, 2021
+
+Number
+
+    EGL Extension #143
+
+Extension Type
+
+    EGL device extension
+
+Dependencies
+
+    Written based on the wording of the EGL 1.5 specification.
+
+    EGL_EXT_device_query is required.
+
+Overview
+
+    Applications can query a list of EGLDeviceEXT handles, but those
+    handles are only valid within the process that queried them. An
+    application has no way, for example, to record its selection and
+    select the same device when run again later.
+
+    This extension provides a persistent identifier for EGLDeviceEXT
+    handles, which allow applications to find the EGLDeviceEXT for the
+    same device across multiple processes.
+
+New Tokens
+
+    Accepted by the <name> parameter of eglQueryDeviceStringEXT:
+
+        EGL_DEVICE_ID_EXT               0x335E
+
+New Device Queries
+
+    eglQueryDeviceStringEXT accepts the new attribute EGL_DEVICE_ID_EXT.
+
+    EGL_DEVICE_ID_EXT returns a string which can uniquely and
+    persistently identify the device.
+
+    The same device will always return the same string, even if called
+    from other processes and across system reboots.
+
+    The string may or may not persist across hardware changes (e.g.,
+    physically adding, removing, or rearranging GPU's) or major software
+    changes (e.g., driver updates).
+
+    The format of EGL_DEVICE_ID_EXT is:
+
+    <vendor name> '/' <vendor-defined string>
+
+    The vendor name consists of one or more characters other than '/',
+    and identifies the EGL client driver (not necessarily the hardware
+    vendor). On systems that support devices from multiple client
+    drivers, the vendor name ensures that the EGL_DEVICE_ID_EXT strings
+    are unique.
+
+    The remainder of the string is implementation-defined. Applications
+    can compare the EGL_DEVICE_ID_EXT string for equality using
+    strcmp(3), but should otherwise treat it as an opaque string of
+    bytes.
+
+Issues
+
+    1.  Should the device ID have a vendor name, or just be entirely an
+        opaque string?
+
+        RESOLVED: A device ID string should include a vendor name. Most
+        applications won't have use for it, but it could be used to
+        correlate an EGL driver to a GLX driver. It could also be useful
+        for testing and debugging.
+
+        On systems that use libglvnd (or some other library that loads
+        multiple drivers), a vendor name ensures that the device ID
+        strings remain unique even if multiple drivers would otherwise
+        happen to pick the same string. On systems that don't support
+        multiple drivers, it's simple enough to prepend an arbitrary
+        dummy name.
+
+    2.  Should the device-specific part of the string have any semantic
+        meaning or structure (e.g., a PCI ID or Vulkan UUID)?
+
+        RESOLVED: No. The purpose of this extension is only to correlate
+        EGLDeviceEXT handles for the same device in multiple processes.
+        Other information about a device should be provided by other
+        extensions.
+
+    3.  What happens if an application stores a device ID, and the
+        hardware configuration or driver version changes?
+
+        RESOLVED: The device ID may become invalid, and the application
+        should select a new device.
+
+        If a device is removed from a system, then there will be no
+        EGLDeviceEXT handle for it, and thus no device ID string.
+        Similarly, if a device is moved within a system, or if a driver
+        is updated, then the device ID's may change.
+
+        While not a requirement, drivers should still try to keep device
+        ID's persistent whenever possible, to avoid invalidating config
+        files. Similarly, if device ID's do change, a driver should try
+        to ensure that an old device ID does not stay valid, but match a
+        different device.
+
+        As an example, a driver could use a PCI vendor and device
+        number, followed by the PCI domain/bus/slot/function numbers:
+
+        * The PCI device number ensures that replacing a GPU with a
+          different model in the same PCI slot produces a different
+          device ID string.
+        * Using the PCI bus numbers ensures that two identical
+          GPU's in the same system have unique ID's.
+        * The whole string can easily stay persistent across driver
+          versions.
+
+Revision History
+
+    #1 (January 25, 2021) Kyle Brenneman
+
+        - Initial draft
